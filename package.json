@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@dsh-plugin/dsh-loader": "2.0.0-dev.43473963317",
+    "@icon-park/react": "1.4.2",
     "@types/node": "^26.2.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
