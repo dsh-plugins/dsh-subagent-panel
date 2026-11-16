@@ -1,0 +1,89 @@
+name: CI 与 npm 发布
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+  NPM_REGISTRY: 'https://registry.npmjs.org'
+
+jobs:
+  quality:
+    name: 质量检查 (${{ matrix.platform }} ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux
+            arch: x64
+            runner: ubuntu-24.04
+          - platform: Linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - platform: Windows
+            arch: x64
+            runner: windows-2025
+          - platform: Windows
+            arch: arm64
+            runner: windows-11-arm
+          - platform: macOS
+            arch: x64
+            runner: macos-15-intel
+          - platform: macOS
+            arch: arm64
+            runner: macos-15
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+      - name: 安装 Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          architecture: ${{ matrix.arch }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          registry-url: ${{ env.NPM_REGISTRY }}
+      - name: 安装锁定依赖
+        run: pnpm install --frozen-lockfile
+      - name: 类型检查
+        run: pnpm typecheck
+      - name: 回归检查
+        run: pnpm test
+      - name: 构建插件
+        run: pnpm build
+      - name: 检查 npm 包内容
+        run: npm pack --dry-run
+
+  publish:
+    name: 发布到 npm
+    needs: quality
+    if: >-
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: write
+      id-token: write
+    uses: dsh-plugins/dsh-npm-publish/.github/workflows/npm-publish.yml@main
+    with:
+      node-version: '24'
+      pnpm-version: '11.17.0'
+      install-command: pnpm install --frozen-lockfile
+      prepare-command: |
+        pnpm build
+        npm pack --dry-run
+      publish-flags: --access public --provenance
+      verify-git-head: true
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

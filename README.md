@@ -85,6 +85,7 @@ node $dshBin plugin --profile web add 'C:\Projects\self\dsh-plugins\dsh-subagent
 - 客户端使用官方槽位、右侧标签服务、宿主 React 和 dsh-loader 共享 UI；通过带 revision 的轮询获取增量状态，前台间隔约 750 毫秒。
 - 目录入口按父会话与任务 ID 关联记录，在原生条目的箭头预留位置挂载；没有面板记录的外部任务保持原状。插件卸载时撤销槽位包装、箭头及键盘处理。
 - `pnpm check` 执行类型检查、协议解析回归检查及构建。
+- GitHub Actions 覆盖 Linux、Windows、macOS 的 x64/arm64 质量检查，发布渠道与认证要求见 [npm 发布配置](docs/RELEASE.md)。
 
 真实进程的多轮对话、恢复和停止结果见 [本地验证记录](docs/verification.md)。
 
