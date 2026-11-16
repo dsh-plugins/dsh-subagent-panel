@@ -1,0 +1,45 @@
+{
+  "name": "@dsh-plugin/dsh-subagent-panel",
+  "version": "0.1.0",
+  "description": "在 DSH 右侧栏查看 Codex 与 Claude Code 的执行过程，并在原生会话中持续对话。",
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.17.0",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/index.d.ts", "default": "./lib/index.js" },
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": ["lib", "locale", "icon.svg", "cordis.patch.yml", "README.md", "LICENSE", "docs"],
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "build": "tsc && tsdown --config tsdown.config.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "check": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "engines": { "node": ">=24.9.0", "dsh": ">=0.2.2-rc.3 <0.2.3" },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "inject": ["@dsh-plugin/dsh-loader"] }
+  },
+  "peerDependencies": { "@dsh-plugin/dsh-loader": "^2.0.0-0" },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.263",
+    "@openai/codex": "0.153.4"
+  },
+  "devDependencies": {
+    "@dsh-plugin/dsh-loader": "2.0.0-dev.43473963317",
+    "@types/node": "^26.2.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsdown": "^0.22.2",
+    "tsx": "^4.20.0",
+    "typescript": "^7.0.2"
+  }
+}
