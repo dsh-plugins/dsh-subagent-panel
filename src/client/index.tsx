@@ -6,6 +6,7 @@ import { PACKAGE, type Conversation, type ConversationSummary, type TranscriptIt
 import { endpoint, parseResource, request, resource, usePolling } from './api.js';
 import { styles } from './style.js';
 import { timeline } from './timeline.js';
+import { NativeCatalog, type CatalogProps, type LineageProps } from './catalog.js';
 
 export const name = PACKAGE;
 export const inject = ['dshLoaderUi', 'slots', 'sidebarRight', 'sidebarRightTabs'];
@@ -16,7 +17,15 @@ interface ClientContext {
 }
 interface Slots {
   inject(name: string, callback: () => (() => void)): () => void;
-  register(options: { name: string; id?: string; key?: string; order?: number }, component: React.ComponentType<any>): () => void;
+  register(options: { name: string; id?: string; key?: string; order?: number; priority?: number; inject?: (...args: any[]) => object; locale?: string }, component: React.ComponentType<any>): () => void;
+  entries(name: string): SlotEntry[];
+  subscribe(name: string, listener: () => void): () => void;
+}
+interface SlotEntry {
+  component: React.ComponentType<LineageProps>;
+  options: { id?: string; key?: string; order?: number; priority?: number };
+  inject?: (...args: any[]) => object;
+  locale?: string;
 }
 interface Sidebar {
   openResource(address: string, options: { kind: string; preferNewPane?: boolean }): void;
@@ -25,7 +34,7 @@ interface Tabs {
   register(options: { id: string; kind: string; keepMounted: boolean; patterns: string[]; title(address: string): string; canOpen(address: string): boolean }): () => void;
 }
 
-/** 通过官方槽位注册右侧标签页，以及会话标题栏和原生子智能体菜单入口。 */
+/** 通过官方槽位注册右侧标签页，并为原生目录中的外部任务补充打开入口。 */
 export function apply(ctx: ClientContext): void {
   const service = <T,>(key: string): T => {
     const value = ctx.dshLoaderUi.services?.get(key);
@@ -37,23 +46,55 @@ export function apply(ctx: ClientContext): void {
   const slots = service<Slots>('slots');
   const sidebar = service<Sidebar>('sidebarRight');
   const tabs = service<Tabs>('sidebarRightTabs');
-  const open = (parent: string, task?: ConversationSummary) => sidebar.openResource(resource(parent, task?.id, task?.title), { kind: 'external-subagent', preferNewPane: false });
-  function Launcher({ sessionId }: { sessionId: string }): React.ReactElement {
-    const { value, error } = usePolling<{ tasks: ConversationSummary[] }>(endpoint(sessionId));
-    const count = value?.tasks.filter(task => task.status === 'running' || task.status === 'starting').length ?? 0;
-    return <button type="button" className="dsp-button dsp-launcher" onClick={() => { open(sessionId); }} title={error || '在侧边栏查看 Codex 和 Claude Code 的执行过程'}>
-      <Icon name="GitBranch" size={14} /> 外部子智能体 <span className="dsp-count">{count || value?.tasks.length || 0}</span>
-    </button>;
+  const open = (parent: string, task: ConversationSummary) => sidebar.openResource(resource(parent, task.id, task.title), { kind: 'external-subagent', preferNewPane: false });
+  function Catalog(props: CatalogProps): React.ReactElement {
+    return <NativeCatalog {...props} ui={ctx.dshLoaderUi} open={open} />;
   }
-  function Footer({ sessionId }: { sessionId: string }): React.ReactElement | null {
-    const { value } = usePolling<{ tasks: ConversationSummary[] }>(endpoint(sessionId));
-    if (!value?.tasks.length) {
-      return null;
+  const decorateLineage = () => {
+    const slot = 'conversation.session.header.lineage';
+    let original: SlotEntry | undefined;
+    let decorated: React.ComponentType<LineageProps> | undefined;
+    let dispose: (() => void) | undefined;
+    let changing = false;
+    const sync = () => {
+      if (changing) { return; }
+      const entries = slots.entries(slot);
+      if (original && entries.includes(original)) { return; }
+      const entry = entries.find(entry => entry.locale === 'subagent' && entry.component !== decorated);
+      if (entry === original) { return; }
+      changing = true;
+      try {
+        dispose?.();
+        dispose = undefined;
+        original = entry;
+        if (!entry) { return; }
+        const Original = entry.component;
+        decorated = function Lineage(props: LineageProps) {
+          const address = props.useSession(state => state.subagent?.address);
+          const parent = props.useSessions(state => {
+            if (address?.childSessionId === props.lineageSessionId) { return address.parentSessionId; }
+            const owner = Object.entries(state.projectionsBySession).find(([, snapshot]) => snapshot?.values.subagentCatalog?.some(child => child.id === props.lineageSessionId));
+            if (owner) { return owner[0]; }
+            const summary = state.byId[props.lineageSessionId];
+            return summary?.origin === 'subagent' ? summary.parentId : undefined;
+          });
+          return <span data-dsp-lineage="" style={{ display: 'contents' }}><Original {...props} /><NativeCatalog {...props} sessionId={props.lineageSessionId} parentSessionId={parent} lineage ui={ctx.dshLoaderUi} open={open} /></span>;
+        };
+        dispose = slots.register({ name: slot, ...entry.options, priority: (entry.options.priority ?? 0) - 1, inject: entry.inject, locale: entry.locale }, decorated);
+      } finally {
+        changing = false;
+      }
+    };
+    const off = slots.subscribe(slot, sync);
+    try {
+      sync();
+    } catch (error) {
+      off();
+      dispose?.();
+      throw error;
     }
-    return <div className="dsp-footer">{value.tasks.slice(0, 6).map(task => <button key={task.id} type="button" className="dsp-button" onClick={() => { open(sessionId, task); }}>
-      <span className={`dsp-dot ${task.status}`} /><span className="dsp-task-title">{task.title}</span><span className="dsp-meta">{statusLabel(task.status)}</span>
-    </button>)}<button type="button" className="dsp-button" onClick={() => { open(sessionId); }}>查看全部外部子智能体</button></div>;
-  }
+    return () => { off(); dispose?.(); };
+  };
   function Tab({ useTabInfo }: { useTabInfo(): { tab: { contentId: string; visible: boolean } } }): React.ReactElement {
     const { tab } = useTabInfo();
     const address = parseResource(tab.contentId);
@@ -65,8 +106,8 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => injectStyle(name, 'panel.css', styles), 'subagent-panel:styles');
   ctx.effect(() => tabs.register({ id: name, kind: 'external-subagent', keepMounted: true, patterns: ['dsh-resource://external-subagent/**'], title: address => parseResource(address)?.title || '外部子智能体', canOpen: address => !!parseResource(address) }), 'subagent-panel:tabs');
   ctx.effect(() => slots.inject('sidebar.right.pane.tab', () => slots.register({ name: 'sidebar.right.pane.tab', key: name }, Tab)), 'subagent-panel:body');
-  ctx.effect(() => slots.inject('conversation.session.header.actions', () => slots.register({ name: 'conversation.session.header.actions', id: name, order: 11 }, Launcher)), 'subagent-panel:launcher');
-  ctx.effect(() => slots.inject('conversation.session.header.actions.subagent.footer', () => slots.register({ name: 'conversation.session.header.actions.subagent.footer', id: name }, Footer)), 'subagent-panel:catalog');
+  ctx.effect(() => slots.inject('conversation.session.header.actions', () => slots.register({ name: 'conversation.session.header.actions', id: name, order: 11 }, Catalog)), 'subagent-panel:catalog');
+  ctx.effect(() => slots.inject('conversation.session.header.lineage', decorateLineage), 'subagent-panel:lineage');
 }
 
 function TaskList({ parent, open }: { parent: string; open(task: ConversationSummary): void }): React.ReactElement {
