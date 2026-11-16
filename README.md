@@ -33,6 +33,16 @@
 
 插件接管上述官方提供方的执行入口，保留其名称、模型、权限模式、显式环境变量和进程释放宽限时间。禁用面板后恢复官方执行入口；启用前已启动的任务无法补采历史过程。
 
+## 从 npm 安装
+
+安装主分支持续发布的开发版：
+
+```powershell
+dsh plugin --profile web add @dsh-plugin/dsh-subagent-panel@next
+```
+
+`next` 随主分支构建更新；正式版本通过版本标签发布到 `latest`。发布规则见 [npm 发布配置](docs/RELEASE.md)。
+
 ## 从本地源码安装
 
 ```powershell
@@ -59,7 +69,7 @@ $dshBin = 'C:\Users\Administrator\AppData\Roaming\in.dsh-plug.dsh-launcher\versi
 node $dshBin plugin --profile web add 'C:\Projects\self\dsh-plugins\dsh-subagent-panel'
 ```
 
-也可运行 `pnpm pack` 生成本地安装包，再用 `dsh plugin --profile web add "<安装包的绝对路径>"` 安装。当前项目尚未发布到 npm，不能直接用包名安装本插件。
+也可运行 `pnpm pack` 生成本地安装包，再用 `dsh plugin --profile web add "<安装包的绝对路径>"` 安装。
 
 ## 使用
 
