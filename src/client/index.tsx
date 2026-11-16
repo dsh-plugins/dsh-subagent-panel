@@ -147,7 +147,7 @@ function TaskPanel({ parent, id, visible }: { parent: string; id: string; visibl
           onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (draft.trim() && !working) { void operate('send'); } } }} /></div></Scrollbar>
         <div className="dsp-compose-actions">
           <DshMenu open={menuOpen && visible} onClose={() => { setMenuOpen(false); }} side="top" portal
-            anchor={<button type="button" className="dsp-button dsp-icon-button" aria-label="会话操作" title="会话操作" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => { setMenuOpen(!menuOpen); }}><Icon name="More" size={18} /></button>}
+            anchor={<button type="button" className="dsp-button dsp-icon-button dsp-menu-trigger" aria-label="会话操作" title="会话操作" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => { setMenuOpen(!menuOpen); }}><Icon name="More" size={18} /></button>}
             items={[{ id: 'refresh', label: '刷新记录', icon: <Icon name="Refresh" size={16} /> }, { id: 'release', label: '释放进程，保留会话', icon: <Icon name="Close" size={16} />, disabled: working || !task || task.status === 'closed' }]}
             onSelect={operation => { setMenuOpen(false); if (operation === 'refresh') { refresh(); } else { void operate('release'); } }} />
           <span className="dsp-provider" title={task ? `${backendLabel(task.backend)} · ${statusLabel(task.status)}` : ''}><span className={`dsp-dot ${task?.status}`} />{task ? backendLabel(task.backend) : ''}</span>
