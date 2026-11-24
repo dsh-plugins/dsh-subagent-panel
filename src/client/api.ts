@@ -23,10 +23,13 @@ export async function request<T>(url: string, signal?: AbortSignal, body?: unkno
   return value;
 }
 
-export function usePolling<T>(url: string): { value?: T; error?: string; refresh(): void } {
+export function usePolling<T>(url: string, enabled = true): { value?: T; error?: string; refresh(): void } {
   const [state, setState] = React.useState<{ url: string; value?: T; error?: string }>({ url });
   const [attempt, retry] = React.useReducer((value: number) => value + 1, 0);
   React.useEffect(() => {
+    if (!enabled) {
+      return;
+    }
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let current: T | undefined;
@@ -49,7 +52,7 @@ export function usePolling<T>(url: string): { value?: T; error?: string; refresh
     };
     void poll();
     return () => { abort.abort(); clearTimeout(timer); };
-  }, [url, attempt]);
+  }, [url, attempt, enabled]);
   return { ...(state.url === url ? state : {}), refresh: () => { retry(); } };
 }
 

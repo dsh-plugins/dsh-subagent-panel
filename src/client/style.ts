@@ -13,6 +13,7 @@ export const styles = `
 .dsp-catalog-arrow svg{display:block}
 .dsp-catalog-arrow:focus-visible{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
 @media(hover:hover){.dsp-catalog-arrow:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}}
+.dsp-row-model{order:1;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:17px}
 .dsp-toolbar{display:flex;align-items:center;gap:12px;padding:12px 16px;flex:none}
 .dsp-heading{min-width:0;flex:1;display:flex;align-items:center;gap:12px;font-weight:500}
 .dsp-meta{font-size:12px;font-weight:400;color:var(--dsw-alias-label-tertiary)}

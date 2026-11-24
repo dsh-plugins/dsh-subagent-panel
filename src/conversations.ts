@@ -6,7 +6,7 @@ import { Transcript } from './transcript.js';
 import type { NativeSession, ProviderConfig, RunResult, StartRequest, Subprocess } from './host-types.js';
 import { ConversationFiles } from './storage.js';
 
-/** 官方提供方的有效设置，只在启动进程时读取，永不写入任务记录。 */
+/** 官方提供方的有效设置，只在启动进程时读取，其权限模式与模型会写入任务展示记录。 */
 export interface ProviderSettings {
   backend: Conversation['backend'];
   config: ProviderConfig;
@@ -46,6 +46,9 @@ export class Conversations {
       permissionMode: config.permissionMode ?? (backend === 'codex' ? 'never' : 'dontAsk'),
       status: 'starting', createdAt: now, updatedAt: now, revision: 0, items: [], turns: [],
     };
+    if (config.model) {
+      record.model = config.model;
+    }
     this.files.add(record);
     const live = this.bind(record);
     const result = new Promise<RunResult>(resolve => { live.first = { settled: false, resolve }; });
@@ -164,6 +167,10 @@ export class Conversations {
       }
       live.record.status = 'starting';
       live.record.permissionMode = config.permissionMode ?? (backend === 'codex' ? 'never' : 'dontAsk');
+      // 原生协议上报过模型时以协议为准，配置值只补首次运行或历史记录缺失的情况。
+      if (!live.record.model && config.model) {
+        live.record.model = config.model;
+      }
       delete live.record.error;
       this.files.changed(live.record);
       const native = await createNative({

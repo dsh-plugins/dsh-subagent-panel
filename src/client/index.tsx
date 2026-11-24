@@ -4,6 +4,7 @@ import Send from '@icon-park/react/es/icons/Send';
 import { DshMenu, Icon, Scrollbar, Markdown, injectStyle, type DshLoaderUi } from '@dsh-plugin/dsh-loader/client';
 import { PACKAGE, type Conversation, type ConversationSummary, type TranscriptItem } from '../model.js';
 import { endpoint, parseResource, request, resource, usePolling } from './api.js';
+import { taskModelView } from './models.js';
 import { styles } from './style.js';
 import { timeline } from './timeline.js';
 import { NativeCatalog, type CatalogProps, type LineageProps } from './catalog.js';
@@ -115,9 +116,12 @@ function TaskList({ parent, open }: { parent: string; open(task: ConversationSum
   return <section className="dsp-panel" aria-label="外部子智能体列表">
     <div className="dsp-toolbar"><div className="dsp-heading">外部子智能体<span className="dsp-meta">Codex · Claude Code</span></div><button className="dsp-button dsp-icon-button" onClick={refresh} type="button" aria-label="刷新任务列表" title="刷新任务列表"><Icon name="Refresh" size={16} /></button></div>
     {error && <div className="dsp-error" role="alert">{error}</div>}
-    <Scrollbar className="dsp-scroll"><div className="dsp-task-list">{value?.tasks.map(task => <button type="button" className="dsp-task" key={task.id} onClick={() => { open(task); }}>
-      <span className={`dsp-dot ${task.status}`} /><span className="dsp-task-copy"><span className="dsp-task-title">{task.title}</span><span className="dsp-meta">{backendLabel(task.backend)} · {statusLabel(task.status)} · {task.turns} 轮对话</span></span><time className="dsp-meta">{formatTime(task.createdAt)}</time><Icon name="ChevronRight" size={12} />
-    </button>)}{!error && !value?.tasks.length && <div className="dsp-empty"><strong>{value ? '等待外部子智能体任务' : '正在加载任务…'}</strong>{value && <>在当前会话中调用 Codex 或 Claude Code 子智能体后，任务会自动出现在这里。</>}</div>}</div></Scrollbar>
+    <Scrollbar className="dsp-scroll"><div className="dsp-task-list">{value?.tasks.map(task => {
+      const model = taskModelView(task.model);
+      return <button type="button" className="dsp-task" key={task.id} onClick={() => { open(task); }}>
+        <span className={`dsp-dot ${task.status}`} /><span className="dsp-task-copy"><span className="dsp-task-title">{task.title}</span><span className="dsp-meta">{backendLabel(task.backend)} · {statusLabel(task.status)} · {task.turns} 轮对话{model ? ` · ${model.label}` : ''}</span></span><time className="dsp-meta">{formatTime(task.createdAt)}</time><Icon name="ChevronRight" size={12} />
+      </button>;
+    })}{!error && !value?.tasks.length && <div className="dsp-empty"><strong>{value ? '等待外部子智能体任务' : '正在加载任务…'}</strong>{value && <>在当前会话中调用 Codex 或 Claude Code 子智能体后，任务会自动出现在这里。</>}</div>}</div></Scrollbar>
   </section>;
 }
 
